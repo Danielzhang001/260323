@@ -1,0 +1,4 @@
+interface:
+  display_name: "English Cartoon Song Maker"
+  short_description: "Turn textbook English into a sung kids-song package with MP3, images, subtitles, and MP4."
+  default_prompt: "Use $english-cartoon-song-maker to turn an English lesson into a kids-song plan, then generate the 302.AI sung audio, cartoon images, and MP4 package."
