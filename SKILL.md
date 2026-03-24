@@ -91,7 +91,7 @@ If the provider key is missing, fail fast with a clear message instead of silent
 
 - `Text`: Xiaolongxia or Coze built-in model
 - `Singing`: 302.AI Suno Custom Mode `chirp-auk`
-- `Images`: 302.AI `gpt-image-1-mini`
+- `Images`: OpenRouter `google/gemini-3.1-flash-image-preview`
 - `Video render`: local `ffmpeg`
 
 ### China-mainland rule
@@ -104,8 +104,8 @@ Treat China-mainland availability as a hard requirement.
 - If the lyric text exceeds the model limit, split it into two parts automatically and concatenate the generated audio.
 - Do not burn subtitles into the mp4 by default. Keep the `.srt` sidecar unless the user explicitly asks for burned-in subtitles.
 - Trim leading and trailing empty music locally after the song is generated.
-- Use `gpt-image-1-mini` for lower-cost cartoon image generation through the same 302 key.
-- If you swap image generation to OpenRouter Gemini Flash, a recommended house style is `Pixar / Disney inspired 3D cartoon style`, with bright classroom lighting, soft materials, large expressive eyes, rounded shapes, and family-friendly color design.
+- Use OpenRouter Gemini Flash for image generation to reduce image-side costs.
+- The default visual preset is `Pixar / Disney inspired 3D cartoon style`, with bright classroom lighting, soft materials, large expressive eyes, rounded shapes, and family-friendly color design.
 - If a hosted runtime cannot execute `ffmpeg`, keep the render step in your own service.
 
 See [references/api-setup.md](references/api-setup.md) and [references/coze-workflow-mapping.md](references/coze-workflow-mapping.md).

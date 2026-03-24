@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import shutil
@@ -144,6 +145,14 @@ def download_file(url: str, output_path: Path) -> None:
                 break
             time.sleep(min(5 * attempt, 12))
     raise RuntimeError(f"Failed to download file: {url}") from last_error
+
+
+def write_data_url(data_url: str, output_path: Path) -> None:
+    prefix, encoded = data_url.split(",", 1)
+    if ";base64" not in prefix:
+        raise RuntimeError("Unsupported image data URL returned by OpenRouter")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_bytes(base64.b64decode(encoded))
 
 
 def compact_lyrics(lyrics: str) -> str:
@@ -361,39 +370,66 @@ def call_302_music(plan: dict[str, Any], output_path: Path) -> dict[str, Any]:
     }
 
 
-def call_302_image(scene: dict[str, Any], output_path: Path) -> dict[str, Any]:
-    api_key = require_env("THREEZERO2_API_KEY")
-    model = os.getenv("THREEZERO2_IMAGE_MODEL", "gpt-image-1-mini").strip() or "gpt-image-1-mini"
-    image_size = os.getenv("THREEZERO2_IMAGE_SIZE", "1024x1024").strip() or "1024x1024"
-    aspect_ratio = os.getenv("THREEZERO2_IMAGE_ASPECT_RATIO", "16:9").strip() or "16:9"
+def build_openrouter_image_prompt(scene: dict[str, Any]) -> str:
+    style = os.getenv(
+        "OPENROUTER_IMAGE_STYLE",
+        "Pixar / Disney inspired 3D cartoon style, bright classroom lighting, soft materials, large expressive eyes, rounded shapes, family-friendly color design",
+    ).strip()
+    return f"{style}. {scene['image_prompt']}"
+
+
+def call_openrouter_image(scene: dict[str, Any], output_path: Path) -> dict[str, Any]:
+    api_key = require_env("OPENROUTER_API_KEY")
+    model = os.getenv("OPENROUTER_IMAGE_MODEL", "google/gemini-3.1-flash-image-preview").strip() or "google/gemini-3.1-flash-image-preview"
+    image_size = os.getenv("OPENROUTER_IMAGE_SIZE", "1K").strip() or "1K"
+    aspect_ratio = os.getenv("OPENROUTER_IMAGE_ASPECT_RATIO", "16:9").strip() or "16:9"
     payload: dict[str, Any] = {
         "model": model,
-        "prompt": scene["image_prompt"],
-        "n": 1,
-        "response_format": "url",
-        "size": image_size,
-        "aspect_ratio": aspect_ratio,
+        "messages": [
+            {
+                "role": "user",
+                "content": build_openrouter_image_prompt(scene),
+            }
+        ],
+        "modalities": ["image", "text"],
+        "image_config": {
+            "aspect_ratio": aspect_ratio,
+            "image_size": image_size,
+        },
+        "stream": False,
     }
 
     data = post_json(
-        "https://api.302.ai/302/images/generations",
+        "https://openrouter.ai/api/v1/chat/completions",
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/Danielzhang001/260323",
+            "X-Title": "english-cartoon-song-maker",
         },
         timeout=300,
         payload=payload,
     )
-    images = data.get("data") or []
-    if not images or not isinstance(images[0], dict) or not images[0].get("url"):
-        raise RuntimeError(f"302 image response did not contain image URL: {data}")
-
-    download_file(images[0]["url"], output_path)
+    choices = data.get("choices") or []
+    if not choices or not isinstance(choices[0], dict):
+        raise RuntimeError(f"OpenRouter image response did not contain choices: {data}")
+    message = choices[0].get("message") or {}
+    images = message.get("images") or []
+    if not images or not isinstance(images[0], dict):
+        raise RuntimeError(f"OpenRouter image response did not contain images: {data}")
+    image_url_blob = images[0].get("image_url") or images[0].get("imageUrl") or {}
+    image_url = image_url_blob.get("url")
+    if not isinstance(image_url, str) or not image_url:
+        raise RuntimeError(f"OpenRouter image response did not contain image URL data: {data}")
+    if image_url.startswith("data:image/"):
+        write_data_url(image_url, output_path)
+    else:
+        download_file(image_url, output_path)
     return {
-        "provider": "302.ai",
+        "provider": "openrouter",
         "model": model,
         "path": str(output_path.resolve()),
-        "source_url": images[0].get("url"),
+        "source_url": image_url[:80] + "..." if image_url.startswith("data:image/") else image_url,
     }
 
 
@@ -417,7 +453,7 @@ def main() -> None:
     parser.add_argument("--plan", required=True, help="Path to the structured plan JSON.")
     parser.add_argument("--output-dir", required=True, help="Target folder for outputs.")
     parser.add_argument("--skip-music", action="store_true", help="Skip 302 music generation.")
-    parser.add_argument("--skip-images", action="store_true", help="Skip 302 image generation.")
+    parser.add_argument("--skip-images", action="store_true", help="Skip OpenRouter image generation.")
     parser.add_argument("--skip-video", action="store_true", help="Skip ffmpeg video rendering.")
     parser.add_argument("--dry-run", action="store_true", help="Only validate and write plan artifacts.")
     args = parser.parse_args()
@@ -469,11 +505,11 @@ def main() -> None:
         image_results: list[dict[str, Any]] = []
         for scene in plan["scenes"]:
             filename = f"scene_{scene['index']:02d}.png"
-            image_result = call_302_image(scene, layout["images_dir"] / filename)
+            image_result = call_openrouter_image(scene, layout["images_dir"] / filename)
             image_results.append(image_result)
         manifest["providers"]["image"] = {
-            "provider": "302.ai",
-            "model": os.getenv("THREEZERO2_IMAGE_MODEL", "gpt-image-1-mini").strip() or "gpt-image-1-mini",
+            "provider": "openrouter",
+            "model": os.getenv("OPENROUTER_IMAGE_MODEL", "google/gemini-3.1-flash-image-preview").strip() or "google/gemini-3.1-flash-image-preview",
         }
         manifest["artifacts"]["images"] = [item["path"] for item in image_results]
 

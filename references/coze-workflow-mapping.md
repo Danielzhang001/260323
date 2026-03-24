@@ -8,7 +8,7 @@ This skill is easiest to run in a self-hosted runtime with shell access. The sam
 2. `Large Model`
 3. `HTTP Request` for 302 music
 4. `Loop` over scenes
-5. `HTTP Request` for 302 image generation
+5. `HTTP Request` for OpenRouter image generation
 6. `Code` or custom service to collect files
 7. `Code` or custom render service for ffmpeg
 8. `End`
@@ -43,23 +43,22 @@ Body fields:
 - `lyrics`
 - `audio_setting`
 
-## 302 image node
+## OpenRouter image node
 
-POST `https://api.302.ai/302/images/generations`
+POST `https://openrouter.ai/api/v1/chat/completions`
 
 Headers:
 
-- `Authorization: Bearer {{THREEZERO2_API_KEY}}`
+- `Authorization: Bearer {{OPENROUTER_API_KEY}}`
 - `Content-Type: application/json`
 
 Body fields:
 
-- `model`: `gpt-image-1-mini`
-- `prompt`
-- `n`
-- `response_format`: `url`
-- `size`
-- `aspect_ratio`
+- `model`: `google/gemini-3.1-flash-image-preview`
+- `messages`
+- `modalities`: `["image","text"]`
+- `image_config.image_size`
+- `image_config.aspect_ratio`
 
 ## Render step
 

@@ -4,7 +4,7 @@
 
 - Text planning: Xiaolongxia or Coze built-in model
 - Singing with accompaniment: 302.AI Suno Custom Mode `chirp-auk`
-- Cartoon images: 302.AI `gpt-image-1-mini`
+- Cartoon images: OpenRouter Gemini Flash Image
 - Video render: local ffmpeg
 
 This avoids paying for a separate text API and keeps music and images on one mainland-friendly billing provider.
@@ -24,7 +24,9 @@ This avoids paying for a separate text API and keeps music and images on one mai
 $env:THREEZERO2_API_KEY="your_302_key"
 $env:THREEZERO2_MUSIC_MODEL="chirp-auk"
 $env:THREEZERO2_SUNO_TAGS="儿歌, 快乐"
-$env:THREEZERO2_IMAGE_MODEL="gpt-image-1-mini"
+$env:OPENROUTER_API_KEY="your_openrouter_key"
+$env:OPENROUTER_IMAGE_MODEL="google/gemini-3.1-flash-image-preview"
+$env:OPENROUTER_IMAGE_STYLE="Pixar / Disney inspired 3D cartoon style"
 ```
 
 ### Notes
@@ -33,9 +35,8 @@ $env:THREEZERO2_IMAGE_MODEL="gpt-image-1-mini"
 - Suno Custom Mode only needs `prompt`, `tags`, and `mv`; if you do not send `title`, 302 will return `unTitled`.
 - If lyrics exceed the configured limit, the script splits them into two parts and concatenates the resulting mp3 files automatically.
 - The local pipeline trims leading and trailing silent music after generation.
-- `gpt-image-1-mini` is the default image model because it is fast and already validated in this workflow.
-- Both music and images use the same 302 key.
-- If you move the image step to OpenRouter Gemini Flash, recommend a consistent style preset such as `Pixar / Disney inspired 3D cartoon style`.
+- OpenRouter Gemini Flash is the default image route in this version of the skill.
+- The default style preset is `Pixar / Disney inspired 3D cartoon style`.
 - Public repo users should always fill in their own keys through `.env.example`; do not ship real credentials.
 
 ## 2. ffmpeg
